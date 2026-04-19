@@ -32,8 +32,6 @@ def seed_landing_content(apps, schema_editor):
             "secondary_cta_url": "#contact",
             "hero_panel_title": "What ABD Site represents",
             "hero_panel_body": "A parent brand that can present multiple products clearly, route visitors to each product site, and manage all landing content from Django admin.",
-            "products_title": "Products under the ABD Site umbrella",
-            "products_body": "Each product card is managed from the admin with its own logo, tags, summary, CTA label, and destination URL.",
             "features_title": "How the parent brand communicates trust",
             "features_body": "The landing page introduces the company, explains the product strategy, and gives each product its own clear place to stand out.",
             "process_title": "How ABD Site presents products",
