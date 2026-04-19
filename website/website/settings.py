@@ -25,7 +25,7 @@ SECRET_KEY = "django-insecure-+3snl6=(bme*_=y3mnp(g^*nf*%=$uko#(7=6vm^=%g=u!c4f$
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["34.9.124.100", "analyticabd.xyz"]
 
 
 # Application definition
@@ -105,7 +105,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Asia/Dhaka"
 
 USE_I18N = True
 
