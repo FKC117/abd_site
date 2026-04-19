@@ -1,0 +1,208 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ branding.site_name }}</title>
+    {% if branding.favicon %}
+    <link rel="icon" type="image/x-icon" href="{{ branding.favicon.url }}">
+    {% endif %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'analyticabd/css/landing.css' %}">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="topbar">
+            <a class="brand" href="#">
+                {% if branding.logo %}
+                <img src="{{ branding.logo.url }}" alt="{{ branding.site_name }}">
+                {% else %}
+                <span class="brand-mark">A</span>
+                {% endif %}
+                <span>{{ branding.site_name }}</span>
+            </a>
+            <nav class="topnav">
+                <a href="#products">Products</a>
+                <a href="#features">Features</a>
+                <a href="#process">Process</a>
+                <a href="#faq">FAQ</a>
+                <a href="/admin/" class="topnav-cta">Admin</a>
+            </nav>
+        </header>
+
+        <main>
+            <section class="hero">
+                <div class="hero-copy">
+                    <p class="eyebrow">{{ branding.hero_badge }}</p>
+                    <h1>{{ landing.hero_title }}</h1>
+                    <p class="hero-text">{{ landing.hero_subtitle }}</p>
+                    <div class="hero-actions">
+                        <a href="{{ landing.primary_cta_url }}" class="btn btn-primary">{{ landing.primary_cta_label }}</a>
+                        <a href="{{ landing.secondary_cta_url }}" class="btn btn-secondary">{{ landing.secondary_cta_label }}</a>
+                    </div>
+                </div>
+
+                <aside class="hero-panel">
+                    <p class="panel-kicker">{{ branding.nav_label }}</p>
+                    <h2>{{ landing.hero_panel_title }}</h2>
+                    <p>{{ landing.hero_panel_body }}</p>
+                    <div class="panel-list">
+                        {% for stat in stats|slice:":3" %}
+                        <div class="panel-item">
+                            <strong>{{ stat.value }}</strong>
+                            <span>{{ stat.label }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </aside>
+            </section>
+
+            <section class="stats-grid">
+                {% for stat in stats %}
+                <article class="stat-card">
+                    <p class="stat-value">{{ stat.value }}</p>
+                    <h3>{{ stat.label }}</h3>
+                    {% if stat.description %}
+                    <p>{{ stat.description }}</p>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            </section>
+
+            <section id="products" class="content-section">
+                <div class="section-heading">
+                    <p class="eyebrow">Products</p>
+                    <h2>{{ landing.products_title }}</h2>
+                    <p>{{ landing.products_body }}</p>
+                </div>
+                <div class="product-grid">
+                    {% for product in products %}
+                    <article class="product-card">
+                        <div class="product-top">
+                            <div class="product-brand">
+                                {% if product.logo %}
+                                <img src="{{ product.logo.url }}" alt="{{ product.name }}">
+                                {% else %}
+                                <span class="product-mark">{{ product.name|slice:":1"|upper }}</span>
+                                {% endif %}
+                                <div>
+                                    <h3>{{ product.name }}</h3>
+                                    <p class="product-tagline">{{ product.short_tagline }}</p>
+                                </div>
+                            </div>
+                            <a href="{{ product.site_url }}" class="btn btn-secondary product-link">{{ product.cta_label }}</a>
+                        </div>
+                        <p class="product-description">{{ product.description }}</p>
+                        {% if product.tag_list %}
+                        <div class="tag-row">
+                            {% for tag in product.tag_list %}
+                            <span class="tag-chip">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </article>
+                    {% empty %}
+                    <article class="product-card">
+                        <div class="product-top">
+                            <div class="product-brand">
+                                <span class="product-mark">S</span>
+                                <div>
+                                    <h3>Saiha</h3>
+                                    <p class="product-tagline">Chat-based data analysis platform</p>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="product-description">Add Saiha and future products from the admin panel with logos, tags, descriptions, and redirect URLs.</p>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section id="features" class="content-section">
+                <div class="section-heading">
+                    <p class="eyebrow">Features</p>
+                    <h2>{{ landing.features_title }}</h2>
+                    <p>{{ landing.features_body }}</p>
+                </div>
+                <div class="feature-grid">
+                    {% for feature in features %}
+                    <article class="feature-card">
+                        <div class="feature-icon">{{ feature.icon|upper|slice:":2" }}</div>
+                        <h3>{{ feature.title }}</h3>
+                        <p>{{ feature.description }}</p>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section id="process" class="content-section split-section">
+                <div class="section-heading">
+                    <p class="eyebrow">Process</p>
+                    <h2>{{ landing.process_title }}</h2>
+                </div>
+                <div class="step-list">
+                    {% for step in steps %}
+                    <article class="step-card">
+                        <span class="step-number">0{{ forloop.counter }}</span>
+                        <div>
+                            <h3>{{ step.title }}</h3>
+                            <p>{{ step.description }}</p>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="content-section">
+                <div class="section-heading">
+                    <p class="eyebrow">Testimonials</p>
+                    <h2>{{ landing.testimonial_title }}</h2>
+                </div>
+                <div class="testimonial-grid">
+                    {% for testimonial in testimonials %}
+                    <article class="testimonial-card">
+                        <p class="quote">“{{ testimonial.quote }}”</p>
+                        <p class="author">{{ testimonial.author_name }}</p>
+                        <p class="role">{{ testimonial.author_role }}{% if testimonial.company %}, {{ testimonial.company }}{% endif %}</p>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section id="faq" class="content-section">
+                <div class="section-heading">
+                    <p class="eyebrow">FAQ</p>
+                    <h2>{{ landing.faq_title }}</h2>
+                </div>
+                <div class="faq-list">
+                    {% for faq in faqs %}
+                    <article class="faq-card">
+                        <h3>{{ faq.question }}</h3>
+                        <p>{{ faq.answer }}</p>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section id="contact" class="cta-banner">
+                <div>
+                    <p class="eyebrow">Launch Faster</p>
+                    <h2>{{ landing.cta_title }}</h2>
+                    <p>{{ landing.cta_body }}</p>
+                </div>
+                <a href="{{ landing.cta_url }}" class="btn btn-primary">{{ landing.cta_label }}</a>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>{{ branding.footer_text }}</p>
+            {% if branding.contact_email %}
+            <a href="mailto:{{ branding.contact_email }}">{{ branding.contact_email }}</a>
+            {% endif %}
+        </footer>
+    </div>
+</body>
+</html>
