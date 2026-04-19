@@ -37,8 +37,8 @@ class Command(BaseCommand):
         )
         landing.primary_cta_label = "Explore Our Products"
         landing.primary_cta_url = "#products"
-        landing.secondary_cta_label = "See Our Capabilities"
-        landing.secondary_cta_url = "#features"
+        landing.secondary_cta_label = "Contact Us"
+        landing.secondary_cta_url = "#contact"
         landing.hero_panel_title = "What ABD Site is building"
         landing.hero_panel_body = (
             "From Saiha, our conversational data analysis product, to upcoming machine learning and "
@@ -63,8 +63,8 @@ class Command(BaseCommand):
             "ABD Site is positioned to deliver practical AI systems across analytics, healthcare automation, "
             "predictive modeling, and research support. Use the admin to keep this parent-brand narrative sharp as the portfolio grows."
         )
-        landing.cta_label = "Open Content Admin"
-        landing.cta_url = "/admin/"
+        landing.cta_label = "Send Inquiry"
+        landing.cta_url = "#contact"
         landing.save()
 
         LandingStat.objects.all().delete()

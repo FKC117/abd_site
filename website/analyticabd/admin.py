@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import (
+    ContactLead,
     LandingFAQ,
     LandingFeature,
     LandingPage,
@@ -67,3 +68,10 @@ class ProductAdmin(admin.ModelAdmin):
     list_display = ("name", "short_tagline", "site_url", "is_featured", "order", "is_active")
     list_editable = ("is_featured", "order", "is_active")
     prepopulated_fields = {"slug": ("name",)}
+
+
+@admin.register(ContactLead)
+class ContactLeadAdmin(admin.ModelAdmin):
+    list_display = ("name", "email", "company", "interest", "created_at")
+    search_fields = ("name", "email", "company", "interest")
+    readonly_fields = ("name", "email", "company", "phone", "interest", "message", "created_at")

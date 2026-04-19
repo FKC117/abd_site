@@ -179,3 +179,19 @@ class Product(models.Model):
         if not self.tags:
             return []
         return [tag.strip() for tag in self.tags.split(",") if tag.strip()]
+
+
+class ContactLead(models.Model):
+    name = models.CharField(max_length=120)
+    email = models.EmailField()
+    company = models.CharField(max_length=150, blank=True)
+    phone = models.CharField(max_length=50, blank=True)
+    interest = models.CharField(max_length=150, blank=True)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.name} - {self.email}"
