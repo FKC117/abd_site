@@ -40,7 +40,7 @@ def home(request):
                 interest=interest,
                 message=message,
             )
-            return redirect("/#contact-success")
+            return redirect("/?submitted=1#contact")
 
     context = {
         "branding": SiteBranding.load(),
@@ -51,7 +51,7 @@ def home(request):
         "steps": LandingStep.objects.filter(is_active=True),
         "testimonials": LandingTestimonial.objects.filter(is_active=True),
         "faqs": LandingFAQ.objects.filter(is_active=True),
-        "contact_success": request.get_full_path().endswith("#contact-success"),
+        "contact_success": request.GET.get("submitted") == "1",
         "contact_errors": errors,
         "contact_data": request.POST if request.method == "POST" else {},
     }
