@@ -1,4 +1,6 @@
 from django.db import models
+from django.utils import timezone
+import secrets
 
 
 class SiteBranding(models.Model):
@@ -195,3 +197,112 @@ class ContactLead(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.email}"
+
+
+class PaymentApiClient(models.Model):
+    client_id = models.CharField(max_length=64, unique=True)
+    display_name = models.CharField(max_length=120)
+    shared_secret = models.CharField(max_length=255, help_text="Shared HMAC secret used by the client and the payment service.")
+    allowed_return_origin = models.CharField(max_length=255, blank=True, help_text="Example: https://quantly.analyticabd.xyz")
+    webhook_url = models.URLField(blank=True, help_text="Optional signed webhook destination for payment result updates.")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["client_id"]
+
+    def __str__(self):
+        return self.display_name or self.client_id
+
+
+class ApiRequestNonce(models.Model):
+    client = models.ForeignKey(PaymentApiClient, on_delete=models.CASCADE, related_name="nonces")
+    nonce = models.CharField(max_length=120)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("client", "nonce")]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.client.client_id}:{self.nonce}"
+
+
+class PaymentIntent(models.Model):
+    PURPOSE_CHOICES = [
+        ("subscription", "Subscription"),
+        ("topup", "Top Up"),
+    ]
+    STATUS_CHOICES = [
+        ("created", "Created"),
+        ("initialized", "Initialized"),
+        ("pending_verification", "Pending Verification"),
+        ("succeeded", "Succeeded"),
+        ("failed", "Failed"),
+        ("cancelled", "Cancelled"),
+        ("expired", "Expired"),
+        ("verification_failed", "Verification Failed"),
+    ]
+
+    public_id = models.CharField(max_length=40, unique=True, db_index=True, blank=True)
+    client = models.ForeignKey(PaymentApiClient, on_delete=models.PROTECT, related_name="payment_intents")
+    internal_order_id = models.CharField(max_length=100)
+    purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES)
+    product_code = models.CharField(max_length=120)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=3, default="BDT")
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default="created")
+
+    customer_name = models.CharField(max_length=200, blank=True)
+    customer_email = models.EmailField(blank=True)
+    customer_phone = models.CharField(max_length=50, blank=True)
+
+    success_return_url = models.URLField(blank=True)
+    fail_return_url = models.URLField(blank=True)
+    cancel_return_url = models.URLField(blank=True)
+
+    merchant_transaction_id = models.CharField(max_length=100, unique=True, blank=True, db_index=True)
+    eps_transaction_id = models.CharField(max_length=100, blank=True, db_index=True)
+    redirect_url = models.URLField(blank=True, max_length=500)
+    financial_entity = models.CharField(max_length=120, blank=True)
+    eps_status = models.CharField(max_length=120, blank=True)
+
+    metadata = models.JSONField(default=dict, blank=True)
+    raw_initialize_response = models.JSONField(default=dict, blank=True)
+    raw_verify_response = models.JSONField(default=dict, blank=True)
+    last_error = models.TextField(blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        unique_together = [("client", "internal_order_id")]
+
+    def __str__(self):
+        return f"{self.public_id} ({self.client.client_id})"
+
+    def save(self, *args, **kwargs):
+        if not self.public_id:
+            self.public_id = f"pi_{secrets.token_urlsafe(12).replace('-', '').replace('_', '')[:20]}"
+        if not self.merchant_transaction_id:
+            stamp = timezone.now().strftime("%Y%m%d%H%M%S")
+            self.merchant_transaction_id = f"MTX_{stamp}_{secrets.token_hex(3).upper()}"
+        super().save(*args, **kwargs)
+
+
+class PaymentEvent(models.Model):
+    payment_intent = models.ForeignKey(PaymentIntent, on_delete=models.CASCADE, related_name="events")
+    event_type = models.CharField(max_length=80)
+    source = models.CharField(max_length=40, blank=True)
+    payload = models.JSONField(default=dict, blank=True)
+    status_code = models.PositiveIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.payment_intent.public_id} - {self.event_type}"

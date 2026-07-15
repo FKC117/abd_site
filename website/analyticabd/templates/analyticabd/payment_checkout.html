@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Checkout</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f7fb; color: #14213d; margin: 0; }
+        .wrap { max-width: 720px; margin: 64px auto; background: #fff; border-radius: 18px; padding: 32px; box-shadow: 0 20px 60px rgba(20,33,61,.12); }
+        .muted { color: #5c677d; }
+        .badge { display: inline-block; padding: 6px 12px; border-radius: 999px; background: #e8f0ff; color: #1d4ed8; font-size: 12px; font-weight: 700; }
+        .row { margin-top: 16px; }
+        .cta { display: inline-block; margin-top: 24px; background: #0f766e; color: #fff; text-decoration: none; padding: 12px 18px; border-radius: 10px; }
+        code { background: #eff2f7; padding: 2px 6px; border-radius: 6px; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <span class="badge">Main Payment Service</span>
+        <h1>Payment Intent {{ intent.public_id }}</h1>
+        <p class="muted">This page is the controlled handoff point on <code>analyticabd.xyz</code>.</p>
+        <div class="row"><strong>Status:</strong> {{ intent.get_status_display }}</div>
+        <div class="row"><strong>Order:</strong> {{ intent.internal_order_id }}</div>
+        <div class="row"><strong>Product:</strong> {{ intent.product_code }}</div>
+        <div class="row"><strong>Amount:</strong> {{ intent.amount }} {{ intent.currency }}</div>
+        {% if intent.redirect_url %}
+            <p class="row">The payment intent is initialized and ready to open EPS.</p>
+            <a class="cta" href="{{ intent.redirect_url }}">Continue To EPS</a>
+        {% elif intent.last_error %}
+            <p class="row">Initialization failed: {{ intent.last_error }}</p>
+        {% else %}
+            <p class="row">The payment intent has been created but is not yet initialized with EPS.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

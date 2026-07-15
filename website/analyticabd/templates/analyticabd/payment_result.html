@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Result</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f7fb; color: #14213d; margin: 0; }
+        .wrap { max-width: 720px; margin: 64px auto; background: #fff; border-radius: 18px; padding: 32px; box-shadow: 0 20px 60px rgba(20,33,61,.12); }
+        .ok { color: #0f766e; }
+        .bad { color: #b91c1c; }
+        .muted { color: #5c677d; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <h1>Payment {{ intent.get_status_display }}</h1>
+        {% if verified %}
+            <p class="ok">EPS verification succeeded. The main site has recorded this payment as successful.</p>
+        {% else %}
+            <p class="bad">The payment is not verified as successful.</p>
+        {% endif %}
+        {% if error_message %}
+            <p class="bad">{{ error_message }}</p>
+        {% endif %}
+        <p class="muted">Payment intent: {{ intent.public_id }}</p>
+        <p class="muted">Order: {{ intent.internal_order_id }}</p>
+        <p class="muted">Merchant transaction: {{ intent.merchant_transaction_id }}</p>
+        <p class="muted">Status: {{ intent.status }}</p>
+    </div>
+</body>
+</html>
