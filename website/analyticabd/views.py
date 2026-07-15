@@ -159,6 +159,7 @@ def _finalize_intent_from_eps(intent: PaymentIntent, callback_type: str, query_p
     intent.raw_verify_response = verify_response
     intent.eps_status = str(verify_response.get("Status", "")).strip()
     intent.financial_entity = str(verify_response.get("FinancialEntity", "")).strip()
+    verified_eps_transaction_id = str(verify_response.get("EPSTransactionId", "")).strip()
     verified = (
         str(verify_response.get("MerchantTransactionId", "")).strip() == intent.merchant_transaction_id
         and str(verify_response.get("Status", "")).strip().lower() == "success"
@@ -167,11 +168,13 @@ def _finalize_intent_from_eps(intent: PaymentIntent, callback_type: str, query_p
     if verified:
         intent.status = "succeeded"
         intent.verified_at = timezone.now()
+        if verified_eps_transaction_id:
+            intent.eps_transaction_id = verified_eps_transaction_id
     elif callback_type == "cancel":
         intent.status = "cancelled"
     else:
         intent.status = "failed"
-    intent.save(update_fields=["raw_verify_response", "eps_status", "financial_entity", "status", "verified_at", "updated_at"])
+    intent.save(update_fields=["raw_verify_response", "eps_status", "financial_entity", "eps_transaction_id", "status", "verified_at", "updated_at"])
     PaymentEvent.objects.create(payment_intent=intent, event_type="eps_verified", source="eps", payload=verify_response, status_code=200)
     if intent.status == "succeeded":
         try:
