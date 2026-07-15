@@ -4,6 +4,7 @@ import hmac
 import json
 import os
 import secrets
+import logging
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from urllib import error as urlerror
@@ -15,6 +16,9 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from .models import ApiRequestNonce, PaymentApiClient, PaymentEvent, PaymentIntent
+
+
+payment_logger = logging.getLogger("payment")
 
 
 class SignatureError(Exception):
@@ -81,6 +85,7 @@ def verify_signed_request(request_obj) -> PaymentApiClient:
     if not hmac.compare_digest(expected, signature):
         raise SignatureError("Invalid request signature.")
 
+    payment_logger.info("signed_request_verified client_id=%s path=%s timestamp=%s", client.client_id, request_obj.path, timestamp)
     try:
         ApiRequestNonce.objects.create(client=client, nonce=nonce)
     except IntegrityError as exc:
@@ -149,7 +154,9 @@ def get_eps_token(config: dict[str, Any]) -> str:
     payload = {"userName": config["username"], "password": config["password"]}
     status_code, data = http_json_request(url, method="POST", payload=payload, headers=headers, timeout=config["timeout_seconds"])
     if status_code >= 400 or not data.get("token"):
+        payment_logger.warning("eps_token_failed username=%s status_code=%s response=%s", config["username"], status_code, data)
         raise EPSRequestError(f"EPS token request failed: {data}")
+    payment_logger.info("eps_token_received username=%s", config["username"])
     return data["token"]
 
 
@@ -213,7 +220,9 @@ def initialize_eps_payment(intent: PaymentIntent) -> dict[str, Any]:
     }
     status_code, data = http_json_request(url, method="POST", payload=payload, headers=headers, timeout=config["timeout_seconds"])
     if status_code >= 400:
+        payment_logger.warning("eps_initialize_failed merchant_transaction_id=%s status_code=%s response=%s", intent.merchant_transaction_id, status_code, data)
         raise EPSRequestError(f"EPS initialize request failed: {data}")
+    payment_logger.info("eps_initialize_response merchant_transaction_id=%s response=%s", intent.merchant_transaction_id, data)
     return data
 
 
@@ -227,7 +236,9 @@ def verify_eps_payment(intent: PaymentIntent) -> dict[str, Any]:
     }
     status_code, data = http_json_request(url, method="GET", headers=headers, timeout=config["timeout_seconds"])
     if status_code >= 400:
+        payment_logger.warning("eps_verify_request_failed merchant_transaction_id=%s status_code=%s response=%s", intent.merchant_transaction_id, status_code, data)
         raise EPSRequestError(f"EPS verify request failed: {data}")
+    payment_logger.info("eps_verify_response merchant_transaction_id=%s response=%s", intent.merchant_transaction_id, data)
     return data
 
 
@@ -282,6 +293,7 @@ def notify_client(intent: PaymentIntent) -> None:
     }
     status_code, data = http_json_request(client.webhook_url, method="POST", payload=payload, headers=headers, timeout=15)
     PaymentEvent.objects.create(payment_intent=intent, event_type="client_webhook", source="analyticabd", payload={"request": payload, "response": data}, status_code=status_code)
+    payment_logger.info("client_webhook_response public_id=%s internal_order_id=%s status_code=%s response=%s", intent.public_id, intent.internal_order_id, status_code, data)
 
 
 def parse_amount(raw_amount: Any) -> Decimal:

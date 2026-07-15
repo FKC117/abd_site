@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import timedelta
 from urllib.parse import urlencode
 
@@ -10,6 +11,9 @@ from django.views.decorators.http import require_GET, require_http_methods
 
 from .models import ContactLead, LandingFAQ, LandingFeature, LandingPage, LandingStat, LandingStep, LandingTestimonial, PaymentEvent, PaymentIntent, Product, SiteBranding
 from .services import EPSRequestError, PaymentConfigurationError, SignatureError, get_payment_intent_ttl_minutes, initialize_eps_payment, notify_client, parse_amount, serialize_intent, validate_return_url, verify_eps_payment, verify_signed_request
+
+
+payment_logger = logging.getLogger("payment")
 
 
 def home(request):
@@ -108,6 +112,7 @@ def create_payment_intent(request):
         return JsonResponse(serialize_intent(intent), status=200)
 
     PaymentEvent.objects.create(payment_intent=intent, event_type="intent_created", source=client.client_id, payload=payload, status_code=201)
+    payment_logger.info("payment_intent_created public_id=%s internal_order_id=%s client=%s amount=%s currency=%s purpose=%s", intent.public_id, intent.internal_order_id, client.client_id, intent.amount, intent.currency, intent.purpose)
     try:
         initialize_response = initialize_eps_payment(intent)
         intent.status = "initialized"
@@ -117,11 +122,13 @@ def create_payment_intent(request):
         intent.last_error = initialize_response.get("ErrorMessage", "") or ""
         intent.save(update_fields=["status", "redirect_url", "eps_transaction_id", "raw_initialize_response", "last_error", "updated_at"])
         PaymentEvent.objects.create(payment_intent=intent, event_type="eps_initialized", source="eps", payload=initialize_response, status_code=200)
+        payment_logger.info("eps_initialized public_id=%s internal_order_id=%s merchant_transaction_id=%s redirect_url=%s init_transaction_id=%s", intent.public_id, intent.internal_order_id, intent.merchant_transaction_id, intent.redirect_url, intent.eps_transaction_id)
     except (PaymentConfigurationError, EPSRequestError) as exc:
         intent.status = "failed"
         intent.last_error = str(exc)
         intent.save(update_fields=["status", "last_error", "updated_at"])
         PaymentEvent.objects.create(payment_intent=intent, event_type="eps_initialize_failed", source="eps", payload={"error": str(exc)}, status_code=500)
+        payment_logger.exception("eps_initialize_failed public_id=%s internal_order_id=%s merchant_transaction_id=%s", intent.public_id, intent.internal_order_id, intent.merchant_transaction_id)
         return JsonResponse({"detail": str(exc), **serialize_intent(intent)}, status=502)
     return JsonResponse(serialize_intent(intent), status=201)
 
@@ -147,6 +154,11 @@ def payment_checkout(request, public_id):
 
 def _finalize_intent_from_eps(intent: PaymentIntent, callback_type: str, query_payload: dict[str, str]):
     PaymentEvent.objects.create(payment_intent=intent, event_type=f"eps_callback_{callback_type}", source="browser_redirect", payload=query_payload, status_code=200)
+    intent.callback_status = str(query_payload.get("Status", "")).strip()
+    intent.callback_eps_transaction_id = str(query_payload.get("EPSTransactionId", "")).strip()
+    intent.callback_received_at = timezone.now()
+    intent.save(update_fields=["callback_status", "callback_eps_transaction_id", "callback_received_at", "updated_at"])
+    payment_logger.info("eps_callback_received public_id=%s internal_order_id=%s callback_type=%s callback_status=%s callback_eps_transaction_id=%s merchant_transaction_id=%s", intent.public_id, intent.internal_order_id, callback_type, intent.callback_status, intent.callback_eps_transaction_id, intent.merchant_transaction_id)
     try:
         verify_response = verify_eps_payment(intent)
     except (PaymentConfigurationError, EPSRequestError) as exc:
@@ -154,15 +166,17 @@ def _finalize_intent_from_eps(intent: PaymentIntent, callback_type: str, query_p
         intent.last_error = str(exc)
         intent.save(update_fields=["status", "last_error", "updated_at"])
         PaymentEvent.objects.create(payment_intent=intent, event_type="eps_verify_failed", source="eps", payload={"error": str(exc)}, status_code=500)
+        payment_logger.exception("eps_verify_failed public_id=%s internal_order_id=%s merchant_transaction_id=%s callback_status=%s", intent.public_id, intent.internal_order_id, intent.merchant_transaction_id, intent.callback_status)
         return intent, False, str(exc)
 
     intent.raw_verify_response = verify_response
     intent.eps_status = str(verify_response.get("Status", "")).strip()
     intent.financial_entity = str(verify_response.get("FinancialEntity", "")).strip()
     verified_eps_transaction_id = str(verify_response.get("EPSTransactionId", "")).strip()
+    eps_status_lower = intent.eps_status.lower()
     verified = (
         str(verify_response.get("MerchantTransactionId", "")).strip() == intent.merchant_transaction_id
-        and str(verify_response.get("Status", "")).strip().lower() == "success"
+        and eps_status_lower == "success"
         and str(verify_response.get("TotalAmount", "")).strip() in {str(intent.amount), f"{intent.amount:.2f}"}
     )
     if verified:
@@ -170,17 +184,24 @@ def _finalize_intent_from_eps(intent: PaymentIntent, callback_type: str, query_p
         intent.verified_at = timezone.now()
         if verified_eps_transaction_id:
             intent.eps_transaction_id = verified_eps_transaction_id
-    elif callback_type == "cancel":
+    elif eps_status_lower == "cancel" or callback_type == "cancel":
         intent.status = "cancelled"
+        if verified_eps_transaction_id:
+            intent.eps_transaction_id = verified_eps_transaction_id
     else:
         intent.status = "failed"
+        if verified_eps_transaction_id:
+            intent.eps_transaction_id = verified_eps_transaction_id
     intent.save(update_fields=["raw_verify_response", "eps_status", "financial_entity", "eps_transaction_id", "status", "verified_at", "updated_at"])
     PaymentEvent.objects.create(payment_intent=intent, event_type="eps_verified", source="eps", payload=verify_response, status_code=200)
-    if intent.status == "succeeded":
+    payment_logger.info("eps_verified public_id=%s internal_order_id=%s callback_status=%s verified_status=%s callback_eps_transaction_id=%s verified_eps_transaction_id=%s merchant_transaction_id=%s amount=%s financial_entity=%s", intent.public_id, intent.internal_order_id, intent.callback_status, intent.eps_status, intent.callback_eps_transaction_id, intent.eps_transaction_id, intent.merchant_transaction_id, intent.amount, intent.financial_entity)
+    if intent.status in {"succeeded", "failed", "cancelled"}:
         try:
             notify_client(intent)
+            payment_logger.info("client_webhook_sent public_id=%s internal_order_id=%s terminal_status=%s webhook_url=%s", intent.public_id, intent.internal_order_id, intent.status, intent.client.webhook_url)
         except Exception as exc:
             PaymentEvent.objects.create(payment_intent=intent, event_type="client_webhook_failed", source="analyticabd", payload={"error": str(exc)}, status_code=500)
+            payment_logger.exception("client_webhook_failed public_id=%s internal_order_id=%s terminal_status=%s webhook_url=%s", intent.public_id, intent.internal_order_id, intent.status, intent.client.webhook_url)
     return intent, verified, ""
 
 

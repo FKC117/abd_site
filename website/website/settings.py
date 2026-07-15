@@ -146,3 +146,39 @@ SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", not DEBUG)
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "payment_verbose": {
+            "format": "[{asctime}] {levelname} {name} - {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "payment_file": {
+            "class": "logging.FileHandler",
+            "filename": str(LOG_DIR / "payment.log"),
+            "formatter": "payment_verbose",
+            "level": "INFO",
+            "delay": True,
+        },
+        "payment_console": {
+            "class": "logging.StreamHandler",
+            "formatter": "payment_verbose",
+            "level": "INFO",
+        },
+    },
+    "loggers": {
+        "payment": {
+            "handlers": ["payment_file", "payment_console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}

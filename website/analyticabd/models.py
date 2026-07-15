@@ -266,6 +266,9 @@ class PaymentIntent(models.Model):
     eps_transaction_id = models.CharField(max_length=100, blank=True, db_index=True)
     redirect_url = models.URLField(blank=True, max_length=500)
     financial_entity = models.CharField(max_length=120, blank=True)
+    callback_status = models.CharField(max_length=120, blank=True)
+    callback_eps_transaction_id = models.CharField(max_length=100, blank=True, db_index=True)
+    callback_received_at = models.DateTimeField(null=True, blank=True)
     eps_status = models.CharField(max_length=120, blank=True)
 
     metadata = models.JSONField(default=dict, blank=True)

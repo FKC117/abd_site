@@ -96,24 +96,29 @@ class PaymentIntentAdmin(admin.ModelAdmin):
         "internal_order_id",
         "purpose",
         "status",
+        "callback_status",
+        "eps_status",
         "amount",
         "currency",
         "merchant_transaction_id",
+        "callback_eps_transaction_id",
         "eps_transaction_id",
+        "callback_received_at",
         "verified_at",
         "created_at",
     )
-    list_filter = ("purpose", "status", "currency", "client", "created_at", "verified_at")
+    list_filter = ("purpose", "status", "callback_status", "eps_status", "currency", "client", "created_at", "verified_at")
     search_fields = (
         "public_id",
         "internal_order_id",
         "merchant_transaction_id",
+        "callback_eps_transaction_id",
         "eps_transaction_id",
         "client__client_id",
         "customer_name",
         "customer_email",
     )
-    readonly_fields = ("public_id", "merchant_transaction_id", "created_at", "updated_at", "verified_at")
+    readonly_fields = ("public_id", "merchant_transaction_id", "callback_received_at", "created_at", "updated_at", "verified_at")
     date_hierarchy = "created_at"
 
 

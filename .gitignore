@@ -11,3 +11,5 @@ website/db.sqlite3
 website/db.sqlite3-journal
 website/media/
 website/staticfiles/
+
+logs/
