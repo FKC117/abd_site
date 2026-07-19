@@ -108,6 +108,7 @@ def validate_return_url(raw_url: str, client: PaymentApiClient) -> str:
 def get_eps_config() -> dict[str, Any]:
     config = {
         "api_base_url": os.getenv("EPS_API_BASE_URL", "https://sandboxpgapi.eps.com.bd").rstrip("/"),
+        "merchant_id": os.getenv("EPS_MERCHANT_ID", "").strip(),
         "username": os.getenv("EPS_USERNAME", "").strip(),
         "password": os.getenv("EPS_PASSWORD", "").strip(),
         "hash_key": os.getenv("EPS_HASH_KEY", "").strip(),
@@ -116,7 +117,7 @@ def get_eps_config() -> dict[str, Any]:
         "timeout_seconds": int(os.getenv("EPS_TIMEOUT_SECONDS", "30")),
         "version": os.getenv("EPS_VERSION", "1").strip() or "1",
     }
-    missing = [name for name in ("username", "password", "hash_key", "store_id") if not config[name]]
+    missing = [name for name in ("merchant_id", "username", "password", "hash_key", "store_id") if not config[name]]
     if missing:
         raise PaymentConfigurationError(f"Missing EPS configuration values: {', '.join(missing)}")
     return config
@@ -169,6 +170,7 @@ def initialize_eps_payment(intent: PaymentIntent) -> dict[str, Any]:
     token = get_eps_token(config)
     url = f"{config['api_base_url']}/v1/EPSEngine/InitializeEPS"
     payload = {
+        "merchantId": config["merchant_id"],
         "storeId": config["store_id"],
         "merchantTransactionId": intent.merchant_transaction_id,
         "CustomerOrderId": intent.internal_order_id,
