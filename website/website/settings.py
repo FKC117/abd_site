@@ -11,7 +11,7 @@ except ImportError:
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 if load_dotenv is not None:
-    load_dotenv(BASE_DIR / ".env")
+    load_dotenv(BASE_DIR / ".env", override=True)
 
 
 def env_bool(name, default=False):
